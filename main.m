@@ -5,25 +5,24 @@ rng(0);
 l = 100;
 dt = 0.1;
 tspan = 0:dt:500;
-opts = odeset('RelTol',1e-7,'AbsTol',1e-7);
+opts = odeset('RelTol',1e-4,'AbsTol',1e-4);
 
 % gradient parameters
-a = 0.55;
-b = 0.2; % a+2b in (0.5,1]
+a = 0.4;
+b = 0.3; % a+2b in (0.5,1]
 a+2*b
-Rstep = 1E4;
-Rsig = 1E4;
+Rstep = 1E-2;
+Rsig = 1E-2;
 % smoothing parameter
-beta = 0.99; 
-
+beta = 0.9; 
 % Sat position xyz
 s1 = [l,0,0]' + 0.1*randn(3,1);
 s2 = Rz(60*pi/180)*s1 + 0.1*randn(3,1);
 s3 = Rz(60*pi/180)*s2 + 0.1*randn(3,1);
 % Euler angles
-phi1 = [0,0,-90*pi/180]' + 0.1*randn(3,1);
-phi2 = [0,0,120*pi/180]' + 0.1*randn(3,1);
-phi3 = [0,0,30*pi/180]' + 0.1*randn(3,1);
+phi1 = [0,0,-90*pi/180]' + 0.4*randn(3,1);
+phi2 = [0,0,120*pi/180]' + 0.4*randn(3,1);
+phi3 = [0,0,30*pi/180]' + 0.4*randn(3,1);
 % Rot matrices (ref frames)
 S1 = Rz(phi1(3));
 S2 = Rz(phi2(3));
@@ -38,6 +37,7 @@ X = zeros(9,length(tspan));
 X(:,1) = U(:,1) + W;
 
 M = zeros(9,length(tspan));
+SS = zeros(9,length(tspan));
 
 % U = zeros(6*3,length(tspan));
 % U(:,1) = [phi1; s1; phi2; s2; phi3; s3];
@@ -110,7 +110,7 @@ grid on;
 
 %% differential equation
 function dy = model(t,x,u)
-    tau = 0.0001;
+    tau = 0.01;
     y = u-x;
     dy = (1/tau)*y;
 end
