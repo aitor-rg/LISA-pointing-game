@@ -1,12 +1,12 @@
 function J = Cost3(s1,s2,s3)
     % right of s2
-    phi1 = s1(1:3);
+    phi1 = s1(1:3)*1e-9;
     xyz1 = s1(4:6);
     % s2
-    phi2 = s2(1:3);
+    phi2 = s2(1:3)*1e-9;
     xyz2 = s2(4:6);
     % s3
-    phi3 = s3(1:3);
+    phi3 = s3(1:3)*1e-9;
     xyz3 = s3(4:6);
     
     % panels of s2
@@ -26,12 +26,18 @@ function J = Cost3(s1,s2,s3)
     
     %Jr = norm(offset_r - dr*tr)^2 - dot(nr,dr)^2;
     %Jl = norm(offset_l - dl*tl)^2 - dot(nl,dl)^2;
-   sig = 10000*eye(3);
-
-    Jr = exp(-0.5*(offset_r - dr*tr)'*sig^-1*(offset_r - dr*tr))-1*(dot(nr,dr)+1)^2;
-    Jl = exp(-0.5*(offset_l - dl*tl)'*sig^-1*(offset_l - dl*tl))-1*(dot(nl,dl)+1)^2;
+   
+    siga = 150*10^-6*eye(3);
+    sigp = 10;
+    c32 = [0,0,(150-30)*pi/180]';
+    c31 = [0,0,(-90-30)*pi/180]';
+    %disp(1*exp(-0.5*(c31-(phi1-phi3))'*sig^-1*(c31-(phi1-phi3))))
+    Jr = 0*exp(-0.5*(offset_r - dr*tr)'*sigp^-1*(offset_r - dr*tr)) + 1*exp(-0.5*(c32-(phi2-phi3))'*siga^-1*(c32-(phi2-phi3)));
+    Jl = 0*exp(-0.5*(offset_l - dl*tl)'*sigp^-1*(offset_l - dl*tl)) + 1*exp(-0.5*(c31-(phi1-phi3))'*siga^-1*(c31-(phi1-phi3)));
     
-    J = Jr + Jl;
+    l = [100,0,0]';
+    s3 = Rz(210*pi/180)*l;
+    J = Jr + Jl ;
 
 %     r3 = [0,0,30*pi/180]';
 %  
