@@ -1,4 +1,4 @@
-function J = Cost2(s1,s2,s3,dphi1,dphi2,dphi3)
+function J = Cost2(s1,s2,s3,dphi1,dphi2,dphi3,sig)
     % right of s2
     phi1 = s1(1:3);
     xyz1 = s1(4:6);
@@ -26,7 +26,7 @@ function J = Cost2(s1,s2,s3,dphi1,dphi2,dphi3)
     
     %Jr = norm(offset_r - dr*tr)^2 - dot(nr,dr)^2;
     %Jl = norm(offset_l - dl*tl)^2 - dot(nl,dl)^2;
-    siga = inv(50*eye(3));
+    siga = sig;%inv(50*eye(3));
     sigp = 10;
     
     x21 = phi2-phi1;
@@ -34,8 +34,8 @@ function J = Cost2(s1,s2,s3,dphi1,dphi2,dphi3)
     x23 = phi2-phi3;
     r23 = -(dphi2-dphi3);
      
-    Jr = -0.5*(x21-r21)'*siga*(x21-r21);
-    Jl = -0.5*(x23-r23)'*siga*(x23-r23);
+    Jr = 0.5*(x21-r21)'*siga*(x21-r21);
+    Jl = 0.5*(x23-r23)'*siga*(x23-r23);
     
     J = Jr + Jl ;
 

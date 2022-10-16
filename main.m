@@ -1,20 +1,20 @@
 clear all;
 close all;
-rng(1);
+rng(0,'twister');
 
 dt = 0.001;
-tspan = 0:dt:300;
+tspan = 0:dt:600;
 opts = odeset('RelTol',1e-4,'AbsTol',1e-4);
 
 %% gradient parameters a = 0.5, b = 0.2, R = 1E4
-a = 0.6;
-b = 0.07; % a+2b in (0.5,1]
+a = 0.5;
+b = 0.01; % a+2b in (0.5,1]
 a+2*b
-Rstep = 1E-2;
-Rsig = 1E-2; % 1E-7 also works
+Rstep = 1E-3;
+Rsig = 1E2; % 1E-7 also works
 % smoothing parameter
-beta = 0.7;
-
+beta = 0;
+alpha = 0.99;
 %% Sat position xyz
 L = 100;
 l = [L,0,0]';
@@ -61,9 +61,9 @@ s1 = s1 + 0*randn(3,1);
 s2 = s2 + 0*randn(3,1);
 s3 = s3 + 0*randn(3,1);
 % Relative Euler angles IN MICRORADIANTS?
-dphi1 = 1*randn(3,1);
-dphi2 = 1*randn(3,1);
-dphi3 = 1*randn(3,1);
+dphi1 = 100*randn(3,1);
+dphi2 = 100*randn(3,1);
+dphi3 = 100*randn(3,1);
 % Noise
 W = sigma(1,Rsig,b)*randn(3*6,1);
 
@@ -79,6 +79,9 @@ M = zeros(3*6,length(tspan));
 % U(:,1) = [phi1; s1; phi2; s2; phi3; s3];
 % X = zeros(6*3,length(tspan));
 % X(:,1) = [phi1; s1; phi2; s2; phi3; s3] + W;
+Uprev1 = zeros(3,1);
+Uprev2 = zeros(3,1);
+Uprev3 = zeros(3,1);
 
 J = zeros(3,length(tspan));
 for k = 2:length(tspan)
@@ -90,24 +93,26 @@ for k = 2:length(tspan)
     x2 = X(7:12,k-1);
     x3 = X(13:18,k-1);
 
-    J(1,k) = Cost1(x1,x2,x3,dphi1,dphi2,dphi3);
-    J(2,k) = Cost2(x1,x2,x3,dphi1,dphi2,dphi3);
-    J(3,k) = Cost3(x1,x2,x3,dphi1,dphi2,dphi3);
+    J(1,k) = Cost1(x1,x2,x3,dphi1,dphi2,dphi3,(1/5000));
+    J(2,k) = Cost2(x1,x2,x3,dphi1,dphi2,dphi3,(1/5000));
+    J(3,k) = Cost3(x1,x2,x3,dphi1,dphi2,dphi3,(1/5000));
 
     
     % Min
-    DJsmooth = J(1,k)*W(1:3)*sigma(k,Rsig,b)^2/sigma(k-1,Rsig,b)^2;
+    DJsmooth = ((J(1,k)-J(1,k-1)))*W(1:3)/sigma(k-1,Rsig,b)^2;
     M(1:3,k) = beta*M(1:3,k-1) + DJsmooth*(1-beta);
-    U(1:3,k) = U(1:3,k-1) + stepsize(k,Rstep,a)*M(1:3,k);
+    U(1:3,k) = U(1:3,k-1) - stepsize(k-1,Rstep,a)*sigma(k-1,Rsig,b)^2*(M(1:3,k)) + alpha*(U(1:3,k-1)-Uprev1);
 
-    DJsmooth = J(2,k)*W(7:9)*sigma(k,Rsig,b)^2/sigma(k-1,Rsig,b)^2;
+    DJsmooth = (J(2,k)-J(2,k-1))*W(7:9)/sigma(k-1,Rsig,b)^2;
     M(7:9,k) = beta*M(7:9,k-1) + DJsmooth*(1-beta);
-    U(7:9,k) = U(7:9,k-1) + stepsize(k,Rstep,a)*M(7:9,k);
+    U(7:9,k) = U(7:9,k-1) - stepsize(k-1,Rstep,a)*sigma(k-1,Rsig,b)^2*(M(7:9,k)) + alpha*(U(7:9,k-1)-Uprev2);
 
-    DJsmooth = J(3,k)*W(13:15)*sigma(k,Rsig,b)^2/sigma(k-1,Rsig,b)^2;
+    DJsmooth = (J(3,k)-J(3,k-1))*W(13:15)/sigma(k-1,Rsig,b)^2;
     M(13:15,k) = beta*M(13:15,k-1) + DJsmooth*(1-beta);
-    U(13:15,k) = U(13:15,k-1) + stepsize(k,Rstep,a)*M(13:15,k);
-    
+    U(13:15,k) = U(13:15,k-1) - stepsize(k-1,Rstep,a)*sigma(k-1,Rsig,b)^2*(M(13:15,k)) + alpha*(U(13:15,k-1)-Uprev3);
+    Uprev1 = U(1:3,k-1);
+    Uprev2 = U(7:9,k-1);
+    Uprev3 = U(13:15,k-1);
 %     voffset = 10*1e9;
 %     U(1:3,k)   = max(min(U(1:3,k),phi1*1e9+voffset),phi1*1e9-voffset);
 %     U(7:9,k)   = max(min(U(7:9,k),phi2*1e9+voffset),phi2*1e9-voffset);
@@ -118,8 +123,10 @@ for k = 2:length(tspan)
 %     U(16:18,k) = c3 + rsphere*(U(16:18,k)-c3)/norm((U(16:18,k)-c3));
 
     W = sigma(k,Rsig,b)*randn(3*6,1);
-    %[~,q] = ode45(@(t,x) model(t,x,U(:,k)+W),[tspan(k-1),tspan(k)],X(:,k-1),opts);
-    X(:,k) = U(:,k)+W;%q(end,:)';
+%     [~,q] = ode45(@(t,x) model(t,x,U(:,k)+W),[tspan(k-1),tspan(k)],X(:,k-1),opts);
+%     X(:,k) = q(end,:)';
+    tau = -0.01;
+    X(:,k) = exp(dt/tau)*X(:,k-1) + (1-exp(dt/tau))*(U(:,k)+W);
 end
 
 figure(1);
@@ -182,6 +189,50 @@ plot(X(3,:)-X(9,:));hold on;
 plot(U(3,:)-U(9,:));hold on;
 plot(-(dphi1(3)-dphi2(3))*ones(1,length(tspan)));
 grid on;
+
+figure(4);
+subplot(3,1,1);
+title('Angles')
+plot(X(1,:)-X(13,:));hold on;
+plot(U(1,:)-U(13,:));hold on;
+plot(-(dphi1(1)-dphi3(1))*ones(1,length(tspan)));
+subplot(3,1,2);
+plot(X(2,:)-X(14,:));hold on;
+plot(U(2,:)-U(14,:));hold on;
+plot(-(dphi1(2)-dphi3(2))*ones(1,length(tspan)));
+subplot(3,1,3);
+plot(X(3,:)-X(15,:));hold on;
+plot(U(3,:)-U(15,:));hold on;
+plot(-(dphi1(3)-dphi3(3))*ones(1,length(tspan)));
+grid on;
+
+figure(5);
+subplot(3,1,1);
+title('Angles')
+plot(X(7,:)-X(13,:));hold on;
+plot(U(7,:)-U(13,:));hold on;
+plot(-(dphi2(1)-dphi3(1))*ones(1,length(tspan)));
+subplot(3,1,2);
+plot(X(8,:)-X(14,:));hold on;
+plot(U(8,:)-U(14,:));hold on;
+plot(-(dphi2(2)-dphi3(2))*ones(1,length(tspan)));
+subplot(3,1,3);
+plot(X(9,:)-X(15,:));hold on;
+plot(U(9,:)-U(15,:));hold on;
+plot(-(dphi2(3)-dphi3(3))*ones(1,length(tspan)));
+grid on;
+
+figure(6);
+subplot(3,1,1);
+title('Angles')
+plot(U(1,:)-U(7,:)-(-(dphi1(1)-dphi2(1))*ones(1,length(tspan))));hold on;
+grid on
+subplot(3,1,2);
+plot(U(2,:)-U(8,:)-(-(dphi1(2)-dphi2(2))*ones(1,length(tspan))));hold on;
+grid on 
+subplot(3,1,3);
+plot(U(3,:)-U(9,:)-(-(dphi1(3)-dphi2(3))*ones(1,length(tspan))));hold on;
+grid on;
 % subplot(3,1,2);
 % plot(U(7,:));hold on;
 % plot(U(8,:));
@@ -240,7 +291,7 @@ grid on;
 
 %% differential equation
 function dy = model(t,x,u)
-    tau = 0.1;
+    tau = 0.01;
     y = u-x;
     dy = (1/tau)*y;
 end
