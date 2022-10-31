@@ -2,19 +2,21 @@ clear all;
 close all;
 rng(0,'twister');
 
-dt = 0.001;
-tspan = 0:dt:600;
+dt = 0.1;
+tspan = 0:dt:8000;
 opts = odeset('RelTol',1e-4,'AbsTol',1e-4);
 
 %% gradient parameters a = 0.5, b = 0.2, R = 1E4
-a = 0.5;
-b = 0.01; % a+2b in (0.5,1]
-a+2*b
-Rstep = 1E-3;
-Rsig = 1E2; % 1E-7 also works
+a = 0.5; %a=0.6
+b = 0.3; % b = 0.07; a+2b in (0.5,1]
+%a+2*b
+Rstep = 1;
+Rsig = 1; % 1E-7 also works
+gstep = 200;
+gsig = 20;
 % smoothing parameter
 beta = 0;
-alpha = 0.99;
+alpha = 0.95;
 %% Sat position xyz
 L = 100;
 l = [L,0,0]';
@@ -61,11 +63,12 @@ s1 = s1 + 0*randn(3,1);
 s2 = s2 + 0*randn(3,1);
 s3 = s3 + 0*randn(3,1);
 % Relative Euler angles IN MICRORADIANTS?
-dphi1 = 100*randn(3,1);
-dphi2 = 100*randn(3,1);
-dphi3 = 100*randn(3,1);
+dphi1 = 155*rand(3,1);
+dphi2 = 155*rand(3,1);
+dphi3 = 155*rand(3,1);
 % Noise
-W = sigma(1,Rsig,b)*randn(3*6,1);
+Wun = randn(3*6,1);
+W = sigma(1,Rsig,b,gsig)*Wun/norm(Wun);
 
 U = zeros(3*6,length(tspan));
 U(:,1) = [zeros(3,1);s1;zeros(3,1);s2;zeros(3,1);s3];
@@ -82,10 +85,11 @@ M = zeros(3*6,length(tspan));
 Uprev1 = zeros(3,1);
 Uprev2 = zeros(3,1);
 Uprev3 = zeros(3,1);
-
+LL = 0;
 J = zeros(3,length(tspan));
+res = 0;
+gamma = 1; 
 for k = 2:length(tspan)
-
 %     x1 = X(1:6,k-1);   %s1
 %     x2 = X(7:12,k-1);  %s2
 %     x3 = X(13:18,k-1); %s3
@@ -93,26 +97,27 @@ for k = 2:length(tspan)
     x2 = X(7:12,k-1);
     x3 = X(13:18,k-1);
 
-    J(1,k) = Cost1(x1,x2,x3,dphi1,dphi2,dphi3,(1/5000));
-    J(2,k) = Cost2(x1,x2,x3,dphi1,dphi2,dphi3,(1/5000));
-    J(3,k) = Cost3(x1,x2,x3,dphi1,dphi2,dphi3,(1/5000));
+    J(1,k) = Cost1(x1,x2,x3,dphi1,dphi2,dphi3,(1/155^2));
+    J(2,k) = Cost2(x1,x2,x3,dphi1,dphi2,dphi3,(1/155^2));
+    J(3,k) = Cost3(x1,x2,x3,dphi1,dphi2,dphi3,(1/155^2));
 
     
     % Min
-    DJsmooth = ((J(1,k)-J(1,k-1)))*W(1:3)/sigma(k-1,Rsig,b)^2;
+    DJsmooth = 3*gamma*((J(1,k)-J(1,k-1)))*W(1:3)/sigma(k-1-LL,Rsig,b,gsig);
     M(1:3,k) = beta*M(1:3,k-1) + DJsmooth*(1-beta);
-    U(1:3,k) = U(1:3,k-1) - stepsize(k-1,Rstep,a)*sigma(k-1,Rsig,b)^2*(M(1:3,k)) + alpha*(U(1:3,k-1)-Uprev1);
+    U(1:3,k) = (U(1:3,k-1) - stepsize(k-1-LL,Rstep,a,gstep)*(M(1:3,k)) + (alpha/k^0)*(U(1:3,k-1)-Uprev1))/1;
 
-    DJsmooth = (J(2,k)-J(2,k-1))*W(7:9)/sigma(k-1,Rsig,b)^2;
+    DJsmooth = 3*gamma*(J(2,k)-J(2,k-1))*W(7:9)/sigma(k-1-LL,Rsig,b,gsig);
     M(7:9,k) = beta*M(7:9,k-1) + DJsmooth*(1-beta);
-    U(7:9,k) = U(7:9,k-1) - stepsize(k-1,Rstep,a)*sigma(k-1,Rsig,b)^2*(M(7:9,k)) + alpha*(U(7:9,k-1)-Uprev2);
+    U(7:9,k) = (U(7:9,k-1) - stepsize(k-1-LL,Rstep,a,gstep)*(M(7:9,k)) + (alpha/k^0)*(U(7:9,k-1)-Uprev2))/1;
 
-    DJsmooth = (J(3,k)-J(3,k-1))*W(13:15)/sigma(k-1,Rsig,b)^2;
+    DJsmooth = 3*gamma*(J(3,k)-J(3,k-1))*W(13:15)/sigma(k-1-LL,Rsig,b,gsig);
     M(13:15,k) = beta*M(13:15,k-1) + DJsmooth*(1-beta);
-    U(13:15,k) = U(13:15,k-1) - stepsize(k-1,Rstep,a)*sigma(k-1,Rsig,b)^2*(M(13:15,k)) + alpha*(U(13:15,k-1)-Uprev3);
+    U(13:15,k) = (U(13:15,k-1) - stepsize(k-1-LL,Rstep,a,gstep)*(M(13:15,k)) + (alpha/k^0)*(U(13:15,k-1)-Uprev3))/1;
     Uprev1 = U(1:3,k-1);
     Uprev2 = U(7:9,k-1);
     Uprev3 = U(13:15,k-1);
+    U(:,k) = min(max(U(:,k),-80),80);
 %     voffset = 10*1e9;
 %     U(1:3,k)   = max(min(U(1:3,k),phi1*1e9+voffset),phi1*1e9-voffset);
 %     U(7:9,k)   = max(min(U(7:9,k),phi2*1e9+voffset),phi2*1e9-voffset);
@@ -122,11 +127,20 @@ for k = 2:length(tspan)
 %     U(10:12,k) = c2 + rsphere*(U(10:12,k)-c2)/norm((U(10:12,k)-c2));
 %     U(16:18,k) = c3 + rsphere*(U(16:18,k)-c3)/norm((U(16:18,k)-c3));
 
-    W = sigma(k,Rsig,b)*randn(3*6,1);
+    Wun = randn(3*6,1);
+    W = Wun/norm(Wun);
 %     [~,q] = ode45(@(t,x) model(t,x,U(:,k)+W),[tspan(k-1),tspan(k)],X(:,k-1),opts);
 %     X(:,k) = q(end,:)';
     tau = -0.01;
-    X(:,k) = exp(dt/tau)*X(:,k-1) + (1-exp(dt/tau))*(U(:,k)+W);
+    X(:,k) = exp(dt/tau)*X(:,k-1) + (1-exp(dt/tau))*(U(:,k)+sigma(k-LL,Rsig,b,gsig)*W);
+%     if(norm([U(1,k)-U(7,k)+(dphi1(1)-dphi2(1));U(2,k)-U(8,k)+(dphi1(2)-dphi2(2));U(3,k)-U(9,k)+(dphi1(3)-dphi2(3))])<10^(-(9+res)))
+%         LL = 0;round(k/3);
+%         res = 1;
+%         %gamma = 100*gamma;
+% %         Uprev1 = gamma*U(1:3,k-1);
+% %         Uprev2 = gamma*U(7:9,k-1);
+% %         Uprev3 = gamma*U(13:15,k-1);
+%     end
 end
 
 figure(1);

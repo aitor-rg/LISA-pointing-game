@@ -1,3 +1,3 @@
-function s = sigma(t, R, b)
-    s = 1/(t+R)^b;
+function s = sigma(t, R, b,g)
+    s = g/(t+R)^b;
 end
