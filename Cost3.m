@@ -1,13 +1,13 @@
 function J = Cost3(s1,s2,s3,dphi1,dphi2,dphi3,sig)
     % right of s2
-    phi1 = s1(1:3);
-    xyz1 = s1(4:6);
-    % s2
-    phi2 = s2(1:3);
-    xyz2 = s2(4:6);
-    % s3
-    phi3 = s3(1:3);
-    xyz3 = s3(4:6);
+    phi1 = s1(1:4);
+    xyz1 = s1(5:7);
+    % left of s1
+    phi2 = s2(1:4);
+    xyz2 = s2(5:7);
+    % right of s1
+    phi3 = s3(1:4);
+    xyz3 = s3(5:7);
     
 %     % panels of s2
 %     nr = Rz(-30*pi/180)*Rz(phi3(3)*1e-9)*Ry(phi3(2)*1e-9)*Rx(phi3(1)*1e-9)*[1;0;0];
@@ -39,8 +39,8 @@ function J = Cost3(s1,s2,s3,dphi1,dphi2,dphi3,sig)
 %     else
 %         factor = 1;
 %     end
-    Jr = 0.5*((x31-r31))'*siga*((x31-r31));
-    Jl = 0.5*((x32-r32))'*siga*((x32-r32));
+    Jr = 0.5*((x31-r31))'*siga*((x31-r31))+0*exp(0.1/(155)^2*( (x31-r31)'*(x31-r31) -152^2) );
+    Jl = 0.5*((x32-r32))'*siga*((x32-r32))+0*exp(0.1/(155)^2*( (x32-r32)'*(x32-r32) -152^2) );
     
     J = Jr + Jl ;
 

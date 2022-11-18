@@ -1,13 +1,13 @@
 function J = Cost1(s1,s2,s3,dphi1,dphi2,dphi3,sig)
     % s1
-    phi1 = s1(1:3);
-    xyz1 = s1(4:6);
+    phi1 = s1(1:4);
+    xyz1 = s1(5:7);
     % left of s1
-    phi2 = s2(1:3);
-    xyz2 = s2(4:6);
+    phi2 = s2(1:4);
+    xyz2 = s2(5:7);
     % right of s1
-    phi3 = s3(1:3);
-    xyz3 = s3(4:6);
+    phi3 = s3(1:4);
+    xyz3 = s3(5:7);
    
     % panels of s1
     
@@ -40,8 +40,8 @@ function J = Cost1(s1,s2,s3,dphi1,dphi2,dphi3,sig)
 %     else
 %         factor = 1;
 %     end
-    Jr = 0.5*((x12-r12))'*siga*((x12-r12));
-    Jl = 0.5*((x13-r13))'*siga*((x13-r13));
+    Jr = 0.5*((x12-r12))'*siga*((x12-r12))+0*exp(0.1/(155)^2*( (x12-r12)'*(x12-r12) -152^2) );
+    Jl = 0.5*((x13-r13))'*siga*((x13-r13))+0*exp(0.1/(155)^2*( (x13-r13)'*(x13-r13) -152^2) );
 
     J = Jr + Jl;
 %     r1 = [0,0,-90*pi/180]';
